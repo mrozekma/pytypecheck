@@ -36,6 +36,8 @@ def describeTypestring(typestring):
 
 	if typestring[-1] == '?':
 		return "(optional) %s" % describeTypestring(typestring[:-1])
+	if typestring[-1] == '^':
+		return "(implicit) %s" % describeTypestring(typestring[:-1])
 	ends, rest = typestring[0] + typestring[-1], typestring[1:-1]
 	if ends == '()':
 		return "any of %s" % ', '.join(map(describe, rest.split(',')))
@@ -77,6 +79,33 @@ def typecheck(typestring, value, setter = None):
 	if typestring[-1] == '?':
 		return (value is None) or typecheck(typestring[:-1], value, setter)
 
+	# Convertable type, e.g. 'int^'
+	if typestring[-1] == '^':
+		substr = typestring[:-1]
+		try:
+			ty = parseType(substr)
+		except ValueError as e:
+			raise ValueError("Can't implicitly convert to unrecognized type: %s" % substr)
+
+		# Already the proper type; no conversion necessary
+		if isinstance(value, ty):
+			return True
+
+		# Attempt the conversion
+		try:
+			spec = inspect.getfullargspec(getattr(ty, '__init__'))
+			if len(spec.args) != 2: # self + the one parameter
+				raise TypeError("constructor is not unary")
+			argName = spec.args[1]
+			if argName not in spec.annotations:
+				raise TypeError("constructor parameter has no type annotation")
+			convertedValue = ty(value)
+			typecheck(spec.annotations[argName], convertedValue) # Will throw if 'value' doesn't fit the constructor parameter's typestring
+			setter(convertedValue)
+			return True
+		except Exception as e:
+			raise TypeError("Unable to implicitly convert to %s: %s" % (ty.__name__, e))
+
 	ends, rest = typestring[0] + typestring[-1], typestring[1:-1]
 
 	# Union type, e.g. '(int, str)'
@@ -110,7 +139,6 @@ def typecheck(typestring, value, setter = None):
 			return all(typecheck(rest, e, lambda new: replaceEntry(e, new)) for e in value)
 
 	# Bare type, e.g. 'int'
-	#TODO Conversions
 	return isinstance(value, parseType(typestring))
 
 def tc(f):
@@ -126,7 +154,7 @@ def tc(f):
 			typestring = param.annotation
 			if name in binding.arguments: # If not, using the default value. We could typecheck the default as well, but choosing not to
 				value = binding.arguments[name]
-				if not typecheck(typestring, value):
+				if not typecheck(typestring, value, lambda new: binding.arguments.__setitem__(name, new)):
 					raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring)))
 		f(*binding.args, **binding.kwargs)
 	return wrap
