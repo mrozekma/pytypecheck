@@ -24,7 +24,7 @@ def describeTypeOf(obj):
 	if isinstance(obj, dict):
 		return "map from %s to %s" % ('/'.join(sorted(set(describeTypeOf(k) for k in obj))), '/'.join(sorted(set(describeTypeOf(v) for v in obj.values())))) if obj else "map"
 	if isinstance(obj, set):
-		return "set of %s" % '/'.join(sorted(set(describeType(e) for e in obj))) if obj else "set"
+		return "set of %s" % '/'.join(sorted(set(describeTypeOf(e) for e in obj))) if obj else "set"
 	return type(obj).__name__
 
 def describeTypestring(typestring):
@@ -40,12 +40,12 @@ def describeTypestring(typestring):
 		return "(implicit) %s" % describeTypestring(typestring[:-1])
 	ends, rest = typestring[0] + typestring[-1], typestring[1:-1]
 	if ends == '()':
-		return "any of %s" % ', '.join(map(describe, rest.split(',')))
+		return "any of %s" % ', '.join(map(describeTypestring, rest.split(',')))
 	if ends == '[]':
 		return "list of %s" % describeTypestring(rest)
 	if ends == '{}':
 		if ':' in rest:
-			return "map from %s to %s" % map(describe, rest.split(':', 1))
+			return "map from %s to %s" % tuple(map(describeTypestring, rest.split(':', 1)))
 		else:
 			return "set of %s" % describeTypestring(rest)
 
@@ -66,7 +66,7 @@ def verify(typestring):
 def typecheck(typestring, value, setter = None):
 	"""
 	Check that 'value' satisfies 'typestring'.
-	If 'setter' is non-None, it may be called to replace the function parameter with a converted instance (not yet implemented)
+	If 'setter' is non-None, it may be called to replace the function parameter with a converted instance
 	"""
 
 	if typestring == inspect.Parameter.empty:
@@ -99,9 +99,9 @@ def typecheck(typestring, value, setter = None):
 			argName = spec.args[1]
 			if argName not in spec.annotations:
 				raise TypeError("constructor parameter has no type annotation")
-			convertedValue = ty(value)
-			typecheck(spec.annotations[argName], convertedValue) # Will throw if 'value' doesn't fit the constructor parameter's typestring
-			setter(convertedValue)
+			if not typecheck(spec.annotations[argName], value):
+				raise TypeError("got type [%s]; constructor takes [%s]" % (describeTypeOf(value), describeTypestring(spec.annotations[argName])))
+			setter(ty(value))
 			return True
 		except Exception as e:
 			raise TypeError("Unable to implicitly convert to %s: %s" % (ty.__name__, e))
