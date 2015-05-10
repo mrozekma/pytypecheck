@@ -180,5 +180,5 @@ def tc(f):
 					raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring, typeTable)))
 				if predicate is not None and not predicate(value):
 					raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
-		f(*binding.args, **binding.kwargs)
+		return f(*binding.args, **binding.kwargs)
 	return wrap
