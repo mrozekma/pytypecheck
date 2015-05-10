@@ -58,9 +58,19 @@ def verify(typestring):
 	"""
 	Check that 'typestring' is a valid typestring. Throws ValueError if not
 	"""
-	if typestring == inspect.Parameter.empty or typestring.strip() == '':
+	if typestring == inspect.Parameter.empty:
 		return True
-	describeTypestring(typestring)
+
+	if isinstance(typestring, str):
+		pass
+	elif isinstance(typestring, tuple) and len(typestring) == 2 and isinstance(typestring[0], str) and callable(typestring[1]):
+		typestring = typestring[0]
+	else:
+		raise ValueError("Invalid typestring `%s': not a string or string/predicate")
+
+	if typestring.strip() == '':
+		return True
+	describeTypestring(typestring) # Will throw ValueError if bad
 	return True
 
 def typecheck(typestring, value, setter = None):
@@ -152,9 +162,17 @@ def tc(f):
 		binding = signature.bind(*args, **kw)
 		for name, param in signature.parameters.items():
 			typestring = param.annotation
+
+			# Already did the checking in verify(); at this point typestring is either just the string or a tuple with the string and predicate
+			predicate = None
+			if isinstance(typestring, tuple):
+				typestring, predicate = typestring
+
 			if name in binding.arguments: # If not, using the default value. We could typecheck the default as well, but choosing not to
 				value = binding.arguments[name]
 				if not typecheck(typestring, value, lambda new: binding.arguments.__setitem__(name, new)):
 					raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring)))
+				if predicate is not None and not predicate(value):
+					raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
 		f(*binding.args, **binding.kwargs)
 	return wrap

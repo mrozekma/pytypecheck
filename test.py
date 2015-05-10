@@ -165,5 +165,12 @@ class Test(TestCase):
 		self.try_arg(ts, None, 'Invalid argument')
 		self.try_arg(ts, [{'foo': []}], 'Invalid argument')
 
+	def test_predicate(self):
+		ts = '[int]', lambda l: all(4 <= x <= 6 for x in l)
+
+		self.try_arg(ts, [])
+		self.try_arg(ts, [4, 5, 6])
+		self.try_arg(ts, [4, 5, 6, 7], 'Invalid argument.*predicate unsatisfied')
+
 if __name__ == '__main__':
 	main()

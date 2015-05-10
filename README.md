@@ -16,6 +16,10 @@ The function annotations you use to restrict a parameter's type are called *type
 
 ![](/../doc-imgs/typestring.png?raw=true)
 
+### Regular types
+
+Anything not matching one of the following cases is assumed to be the name of an actual type, e.g. `int`. It can be anything in-scope at the point where the function is defined.
+
 ### Optional types
 
 A typestring ending in a question mark, e.g. `int?`, is *optional* -- `None` is a valid argument for this parameter.
@@ -100,10 +104,23 @@ A typestring wrapped in braces, e.g. `{int}`, is a set of that type. All the pro
 
 Two colon-separated typestrings wrapped in braces, e.g. `{int: int}`, are a dict mapping the first type to the second. The key and the value types are distinct, so e.g. `{int?: int}` allows `None` keys but not values.
 
-### Types
-
-Anything not matching one of the above is assumed to be the name of an actual type, e.g. `int`. It can be anything in-scope at the point where the function is defined.
-
 ---
 
 The examples above generally used `int` as a placeholder for a typestring, but any typestring is valid -- typestrings can nest as needed. For example, `[{int?: [{Foo^}]}?]` is a list that contains an optional map from optional ints to a list of sets of Foo instances that will be implicitly converted if necessary.
+
+## Predicates
+
+Along with the typestring, you can optionally provide a *predicate*. This is a function that takes the function argument and returns a boolean indicating its validity. Note that the predicate is only called if the typestring is satisfied. For example:
+
+```python
+@tc
+def fn(a : ('int', lambda x: x == 4)): pass
+
+fn(4)
+
+fn('foo')
+TypeError: Invalid argument `a' of type [str]; expected [int]
+
+fn(5)
+TypeError: Invalid argument `a': predicate unsatisfied
+```
