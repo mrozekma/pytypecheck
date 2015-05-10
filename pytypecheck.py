@@ -96,7 +96,11 @@ def typecheck(typestring, value, typeTable, setter = None):
 
 		# Attempt the conversion
 		try:
-			spec = inspect.getfullargspec(getattr(ty, '__init__'))
+			ctor = getattr(ty, '__init__')
+			# If the constructor is wrapped in a typechecker, get the real constructor
+			while hasattr(ctor, 'tcWrappedFn'):
+				ctor = ctor.tcWrappedFn
+			spec = inspect.getfullargspec(ctor)
 			if len(spec.args) != 2: # self + the one parameter
 				raise TypeError("constructor is not unary")
 			argName = spec.args[1]
@@ -181,4 +185,5 @@ def tc(f):
 				if predicate is not None and not predicate(value):
 					raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
 		return f(*binding.args, **binding.kwargs)
+	wrap.tcWrappedFn = f
 	return wrap

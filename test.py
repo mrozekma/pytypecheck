@@ -14,6 +14,7 @@ class UnannotatedConstructor:
 		self.x = x
 
 class IntConstructor:
+	@tc
 	def __init__(self, x : 'int'):
 		self.x = x
 
