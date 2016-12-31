@@ -7,6 +7,19 @@ def parseType(name, typeTable):
 		return getattr(builtins, name)
 	if name in typeTable:
 		return typeTable[name]
+	if '.' in name:
+		seek = typeTable
+		for part in name.split('.'):
+			try:
+				if not part in seek:
+					break
+				seek = seek[part]
+			except TypeError:
+				if not hasattr(seek, part):
+					break
+				seek = getattr(seek, part)
+		else:
+			return seek
 	raise ValueError("Unrecognized type: %s" % name)
 
 def describeTypeOf(obj):
@@ -27,6 +40,8 @@ def describeTypestring(typestring, typeTable):
 		# If it happens here it means it's a fragment of a larger expression and can't be empty
 		raise ValueError("Empty substring in type string")
 
+	if typestring == 'None':
+		return "None"
 	if typestring[-1] == '?':
 		return "(optional) %s" % describeTypestring(typestring[:-1], typeTable)
 	if typestring[-1] == '^':
@@ -77,6 +92,10 @@ def typecheck(typestring, value, typeTable, setter = None):
 	typestring = typestring.strip()
 	if typestring == '':
 		return True
+
+	# None type
+	if typestring == 'None':
+		return value is None
 
 	# Optional type, e.g. 'int?'
 	if typestring[-1] == '?':

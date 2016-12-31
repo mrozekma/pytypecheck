@@ -54,6 +54,10 @@ class Test(TestCase):
 	def test_bad_typestring(self):
 		self.bad_typestring('asdf')
 
+	def test_none(self):
+		self.try_arg('None', None)
+		self.try_arg('None', True, 'Invalid argument')
+
 	def test_int(self):
 		self.try_arg('int', 4)
 		self.try_arg('int', 'foo', 'Invalid argument')
@@ -202,6 +206,10 @@ class Test(TestCase):
 		def fn() -> 'int':
 			return 4
 		fn()
+
+		@tc
+		def fn() -> 'None':
+			pass
 
 if __name__ == '__main__':
 	main()
