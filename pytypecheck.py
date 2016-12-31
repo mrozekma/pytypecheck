@@ -167,7 +167,7 @@ def typecheck(typestring, value, typeTable, setter = None):
 	# Bare type, e.g. 'int'
 	return isinstance(value, parseType(typestring, typeTable))
 
-def tc(f):
+def tc(f, preVerifyAnnotations = True):
 	signature = inspect.signature(f)
 
 	# Need to look up types in the scope that 'f' was declared in
@@ -184,9 +184,10 @@ def tc(f):
 		raise RuntimeError("Unable to find scope containing the declaration of %s" % f)
 
 	# Make sure the annotations are valid
-	for param in signature.parameters.values():
-		verify(param.annotation, typeTable)
-	verify(signature.return_annotation, typeTable)
+	if preVerifyAnnotations:
+		for param in signature.parameters.values():
+			verify(param.annotation, typeTable)
+		verify(signature.return_annotation, typeTable)
 
 	def wrap(*args, **kw):
 		binding = signature.bind_partial(*args, **kw)
@@ -217,4 +218,10 @@ def tc(f):
 
 		return rtn['rtn']
 	wrap.tcWrappedFn = f
+	return wrap
+
+# 'tc' is designed to be used as '@tc', not '@tc()', so it can't take arguments. This version takes arguments and forwards them to tc
+def tc_opts(*, verify = True):
+	def wrap(f):
+		return tc(f, verify)
 	return wrap

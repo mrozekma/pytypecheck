@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from pytypecheck import tc
+from pytypecheck import tc, tc_opts
 from unittest import TestCase, main, skip
 
 class NoConstructor:
@@ -209,6 +209,11 @@ class Test(TestCase):
 
 		@tc
 		def fn() -> 'None':
+			pass
+
+	def test_no_verify(self):
+		@tc_opts(verify = False)
+		def fn(x : 'asdf'):
 			pass
 
 if __name__ == '__main__':
