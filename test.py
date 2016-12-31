@@ -179,5 +179,29 @@ class Test(TestCase):
 			return x
 		self.assertEqual(4, fn(4))
 
+	def test_bad_return_typestring(self):
+		with self.throws(ValueError, 'Invalid typestring') as cm:
+			@tc
+			def fn() -> 'asdf':
+				pass
+
+	def test_wrong_return_typestring(self):
+		with self.throws(TypeError, 'Invalid return value') as cm:
+			@tc
+			def fn() -> 'int':
+				return None
+			fn()
+
+	def test_valid_return_typestrings(self):
+		@tc
+		def fn() -> 'int?':
+			return None
+		fn()
+
+		@tc
+		def fn() -> 'int':
+			return 4
+		fn()
+
 if __name__ == '__main__':
 	main()

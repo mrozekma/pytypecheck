@@ -167,9 +167,10 @@ def tc(f):
 	# Make sure the annotations are valid
 	for param in signature.parameters.values():
 		verify(param.annotation, typeTable)
+	verify(signature.return_annotation, typeTable)
 
 	def wrap(*args, **kw):
-		binding = signature.bind(*args, **kw)
+		binding = signature.bind_partial(*args, **kw)
 		for name, param in signature.parameters.items():
 			typestring = param.annotation
 
@@ -184,6 +185,17 @@ def tc(f):
 					raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring, typeTable)))
 				if predicate is not None and not predicate(value):
 					raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
-		return f(*binding.args, **binding.kwargs)
+
+		rtn = {'rtn': f(*binding.args, **binding.kwargs)}
+
+		typestring, predicate = signature.return_annotation, None
+		if isinstance(typestring, tuple):
+			typestring, predicate = typestring
+		if not typecheck(typestring, rtn['rtn'], typeTable, lambda new: rtn.__setitem__('rtn', new)):
+			raise TypeError("Invalid return value of type [%s]; expected [%s]" % (describeTypeOf(rtn['rtn']), describeTypestring(typestring, typeTable)))
+		if predicate is not None and not predicate(rtn['rtn']):
+			raise TypeError("Invalid return value: predicate unsatisfied")
+
+		return rtn['rtn']
 	wrap.tcWrappedFn = f
 	return wrap
