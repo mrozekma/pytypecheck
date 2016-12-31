@@ -167,12 +167,11 @@ def typecheck(typestring, value, typeTable, setter = None):
 	# Bare type, e.g. 'int'
 	return isinstance(value, parseType(typestring, typeTable))
 
-def tc(f, preVerifyAnnotations = True):
+def tc(f, preVerifyAnnotations = True, nextOverload = None):
 	signature = inspect.signature(f)
 
 	# Need to look up types in the scope that 'f' was declared in
 	# Scan for the first frame that's within the function's
-	typeTable = None
 	fFile = inspect.getsourcefile(f)
 	lines, fStartLine = inspect.getsourcelines(f)
 	fEndLine = fStartLine + len(lines) - 1
@@ -180,7 +179,7 @@ def tc(f, preVerifyAnnotations = True):
 		if filename == fFile and fStartLine <= lineno <= fEndLine:
 			typeTable = frame.f_globals
 			break
-	if typeTable is None:
+	else:
 		raise RuntimeError("Unable to find scope containing the declaration of %s" % f)
 
 	# Make sure the annotations are valid
@@ -191,37 +190,51 @@ def tc(f, preVerifyAnnotations = True):
 
 	def wrap(*args, **kw):
 		binding = signature.bind_partial(*args, **kw)
-		for name, param in signature.parameters.items():
-			typestring = param.annotation
+		try:
+			for name, param in signature.parameters.items():
+				typestring = param.annotation
 
-			# Already did the checking in verify(); at this point typestring is either just the string or a tuple with the string and predicate
-			predicate = None
+				# Already did the checking in verify(); at this point typestring is either just the string or a tuple with the string and predicate
+				predicate = None
+				if isinstance(typestring, tuple):
+					typestring, predicate = typestring
+
+				if name in binding.arguments: # If not, using the default value. We could typecheck the default as well, but choosing not to
+					value = binding.arguments[name]
+					if not typecheck(typestring, value, typeTable, lambda new: binding.arguments.__setitem__(name, new)):
+						raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring, typeTable)))
+					if predicate is not None and not predicate(value):
+						raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
+
+			rtn = {'rtn': f(*binding.args, **binding.kwargs)}
+
+			typestring, predicate = signature.return_annotation, None
 			if isinstance(typestring, tuple):
 				typestring, predicate = typestring
-
-			if name in binding.arguments: # If not, using the default value. We could typecheck the default as well, but choosing not to
-				value = binding.arguments[name]
-				if not typecheck(typestring, value, typeTable, lambda new: binding.arguments.__setitem__(name, new)):
-					raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring, typeTable)))
-				if predicate is not None and not predicate(value):
-					raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
-
-		rtn = {'rtn': f(*binding.args, **binding.kwargs)}
-
-		typestring, predicate = signature.return_annotation, None
-		if isinstance(typestring, tuple):
-			typestring, predicate = typestring
-		if not typecheck(typestring, rtn['rtn'], typeTable, lambda new: rtn.__setitem__('rtn', new)):
-			raise TypeError("Invalid return value of type [%s]; expected [%s]" % (describeTypeOf(rtn['rtn']), describeTypestring(typestring, typeTable)))
-		if predicate is not None and not predicate(rtn['rtn']):
-			raise TypeError("Invalid return value: predicate unsatisfied")
+			if not typecheck(typestring, rtn['rtn'], typeTable, lambda new: rtn.__setitem__('rtn', new)):
+				raise TypeError("Invalid return value of type [%s]; expected [%s]" % (describeTypeOf(rtn['rtn']), describeTypestring(typestring, typeTable)))
+			if predicate is not None and not predicate(rtn['rtn']):
+				raise TypeError("Invalid return value: predicate unsatisfied")
+		except TypeError:
+			# If there are overloads, move on to those
+			if nextOverload is not None:
+				try:
+					return nextOverload(*args, **kw)
+				except TypeError:
+					# The overload didn't match; keep the exception chain going
+					raise
+				except Exception as e:
+					# If an overload matched (i.e. didn't raise a TypeError) but then the method threw some other exception, it shouldn't chain into previous TypeErrors raised by overload resolution failures
+					raise e from None
+			#TODO Right now all the overload type errors come out in a chain because of PEP3134; it'd be nice to generate a single exception that lists all the signatures, but an elegant way to do that escapes me at the moment
+			raise
 
 		return rtn['rtn']
 	wrap.tcWrappedFn = f
 	return wrap
 
 # 'tc' is designed to be used as '@tc', not '@tc()', so it can't take arguments. This version takes arguments and forwards them to tc
-def tc_opts(*, verify = True):
+def tc_opts(*, verify = True, overload = None):
 	def wrap(f):
-		return tc(f, verify)
+		return tc(f, verify, overload)
 	return wrap

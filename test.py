@@ -216,5 +216,37 @@ class Test(TestCase):
 		def fn(x : 'asdf'):
 			pass
 
+	def test_overloading(self):
+		@tc
+		def fn(x : 'int'):
+			return 1
+
+		@tc_opts(overload = fn)
+		def fn(x : 'str'):
+			return 2
+
+		@tc_opts(overload = fn)
+		def fn(x, y):
+			return 3
+
+		self.assertEqual(fn(4), 1)
+		self.assertEqual(fn('test'), 2)
+		self.assertEqual(fn(None, None), 3)
+		with self.throws(TypeError, None):
+			fn(None)
+
+	@skip('Unimplemented')
+	def test_ambiguous_overloading(self):
+		@tc
+		def fn(x : 'int?'):
+			pass
+
+		@tc_opts(overload = fn)
+		def fn(x : 'str?'):
+			pass
+
+		with self.throws(TypeError, None):
+			fn(None)
+
 if __name__ == '__main__':
 	main()
