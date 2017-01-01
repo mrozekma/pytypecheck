@@ -1,6 +1,8 @@
 import builtins
+import functools
 import inspect
 import os
+import typing
 
 def parseType(name, typeTable):
 	if hasattr(builtins, name):
@@ -167,6 +169,7 @@ def typecheck(typestring, value, typeTable, setter = None):
 	# Bare type, e.g. 'int'
 	return isinstance(value, parseType(typestring, typeTable))
 
+@typing.no_type_check_decorator
 def tc(f, preVerifyAnnotations = True, nextOverload = None):
 	signature = inspect.signature(f)
 
@@ -188,6 +191,7 @@ def tc(f, preVerifyAnnotations = True, nextOverload = None):
 			verify(param.annotation, typeTable)
 		verify(signature.return_annotation, typeTable)
 
+	@functools.wraps(f)
 	def wrap(*args, **kw):
 		binding = signature.bind_partial(*args, **kw)
 		try:
