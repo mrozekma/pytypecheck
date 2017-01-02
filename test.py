@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pytypecheck import tc, tc_opts
+from predicates import oneof, inrange
 from unittest import TestCase, main, skip
 
 class NoConstructor:
@@ -176,6 +177,18 @@ class Test(TestCase):
 		self.try_arg(ts, [])
 		self.try_arg(ts, [4, 5, 6])
 		self.try_arg(ts, [4, 5, 6, 7], 'Invalid argument.*predicate unsatisfied')
+
+		ts = 'int', oneof(4, 5, 6)
+		self.try_arg(ts, 4)
+		self.try_arg(ts, 5)
+		self.try_arg(ts, 6)
+		self.try_arg(ts, 7, 'Invalid argument.*predicate unsatisfied.*not in')
+
+		ts = 'int', inrange(4, 6)
+		self.try_arg(ts, 4)
+		self.try_arg(ts, 5)
+		self.try_arg(ts, 6)
+		self.try_arg(ts, 7, 'Invalid argument.*predicate unsatisfied.*not between')
 
 	def test_return(self):
 		@tc

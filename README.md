@@ -118,11 +118,12 @@ The examples above generally used `int` as a placeholder for a typestring, but a
 
 ## Predicates
 
-Along with the typestring, you can optionally provide a *predicate*. This is a function that takes the function argument and returns a boolean indicating its validity. Note that the predicate is only called if the typestring is satisfied. For example:
+Along with the typestring, you can optionally provide a *predicate*. This is a function that takes the function argument and returns a boolean indicating its validity, or a string indicating why the argument was invalid (in other words, only a return value of `True` indicates a valid argument). Note that the predicate is only called if the typestring is satisfied. For example:
 
 ```python
 @tc
-def fn(a : ('int', lambda x: x == 4)): pass
+def fn(a : ('int', lambda x: x == 4)):
+    pass
 
 fn(4)
 
@@ -132,6 +133,36 @@ fn('foo')
 fn(5)
 # TypeError: Invalid argument `a': predicate unsatisfied
 ```
+
+The `predicates` module provides some functions to generate common predicates. These predicates return error messages and have a descriptive string representations in case the function signature is displayed anywhere (e.g. [autodoc](http://www.sphinx-doc.org/en/1.5.1/ext/autodoc.html)).
+
+* `oneof` -- Takes one or more arguments and constructs a predicate that only accepts those values
+
+  ```python
+  from pytypecheck.predicates import oneof
+  @tc
+  def fn(x : ('int', oneof(4, 5, 7))):
+      pass
+
+  fn(4)
+
+  fn(6)
+  # TypeError: Invalid argument `x': predicate unsatisfied: 6 not in (4, 5)
+  ```
+
+* `inrange` -- Takes two arguments and constructs a predicate that only accepts a value between those values. Values must be comparable using `<=`, as in `start <= value <= end`
+
+  ```python
+  from pytypecheck.predicates import inrange
+  @tc
+  def fn(x : ('int', inrange(4, 8))):
+      pass
+
+  fn(6)
+
+  fn(10)
+  TypeError: Invalid argument `x': predicate unsatisfied: 10 not between 4 and 8
+  ```
 
 ## tc options
 

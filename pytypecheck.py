@@ -207,8 +207,11 @@ def tc(f, preVerifyAnnotations = True, nextOverload = None):
 					value = binding.arguments[name]
 					if not typecheck(typestring, value, typeTable, lambda new: binding.arguments.__setitem__(name, new)):
 						raise TypeError("Invalid argument `%s' of type [%s]; expected [%s]" % (name, describeTypeOf(binding.arguments[name]), describeTypestring(typestring, typeTable)))
-					if predicate is not None and not predicate(value):
-						raise TypeError("Invalid argument `%s': predicate unsatisfied" % name)
+					if predicate is not None:
+						result = predicate(value)
+						if result is not True:
+							result = ("predicate unsatisfied: %s" % result) if result else 'predicate unsatisfied'
+							raise TypeError("Invalid argument `%s': %s" % (name, result))
 
 			rtn = {'rtn': f(*binding.args, **binding.kwargs)}
 
