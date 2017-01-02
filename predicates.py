@@ -8,7 +8,7 @@ class OneOf:
 		return "%s not in %s" % (candidate, self.members)
 
 	def __repr__(self):
-		return "one of %s" % ', '.join(self.members)
+		return "one of %s" % ', '.join(map(repr, self.members))
 
 def oneof(*members):
 	return OneOf(members)
