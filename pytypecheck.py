@@ -27,6 +27,8 @@ def parseType(name, typeTable):
 def describeTypeOf(obj):
 	if obj is None:
 		return 'None'
+	if isinstance(obj, tuple):
+		return "tuple of %s" % '/'.join(sorted(set(describeTypeOf(e) for e in obj))) if obj else "tuple"
 	if isinstance(obj, list):
 		return "list of %s" % '/'.join(sorted(set(describeTypeOf(e) for e in obj))) if obj else "list"
 	if isinstance(obj, dict):
@@ -50,7 +52,13 @@ def describeTypestring(typestring, typeTable):
 		return "(implicit) %s" % describeTypestring(typestring[:-1], typeTable)
 	ends, rest = typestring[0] + typestring[-1], typestring[1:-1]
 	if ends == '()':
-		return "any of %s" % ', '.join(describeTypestring(e, typeTable) for e in rest.split(','))
+		subtypes = rest.split(',')
+		if len(subtypes) == 1:
+			return "tuple of %s" % describeTypestring(rest, typeTable)
+		elif len(subtypes) == 2:
+			return "%s or %s" % tuple(describeTypestring(e, typeTable) for e in subtypes)
+		else:
+			return "%sor %s" % (''.join("%s, " % describeTypestring(e, typeTable) for e in subtypes[:-1]), describeTypestring(subtypes[-1], typeTable))
 	if ends == '[]':
 		return "list of %s" % describeTypestring(rest, typeTable)
 	if ends == '{}':
@@ -136,9 +144,16 @@ def typecheck(typestring, value, typeTable, setter = None):
 
 	ends, rest = typestring[0] + typestring[-1], typestring[1:-1]
 
-	# Union type, e.g. '(int, str)'
 	if ends == '()':
-		return any(typecheck(substr, value, typeTable, setter) for substr in rest.split(','))
+		# Union type, e.g. '(int, str)'
+		if ',' in rest:
+			return any(typecheck(substr, value, typeTable, setter) for substr in rest.split(','))
+
+		# Tuple type, e.g. '(int)'
+		else:
+			if not isinstance(value, tuple):
+				return False
+			return all(typecheck(rest, e, typeTable) for e in value)
 
 	# List type, e.g. '[int]'
 	if ends == '[]':

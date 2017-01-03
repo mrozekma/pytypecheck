@@ -69,6 +69,11 @@ class Test(TestCase):
 		self.try_arg('int?', 'foo', 'Invalid argument')
 		self.try_arg('int?', None)
 
+	def test_tuple(self):
+		self.try_arg('(bool)', (True,))
+		self.try_arg('(int?)', (4, None))
+		self.try_arg('(int?)', 'foo', 'Invalid argument')
+
 	def test_union(self):
 		self.try_arg('(bool, str)', True)
 		self.try_arg('(bool, str)', 'foo')

@@ -104,6 +104,10 @@ A typestring wrapped in brackets, e.g. `[int]`, is a list of that type. The argu
 * `[int]?` -- The function argument can be `None`, but `[None]` is not valid
 * `[int?]?` -- The list can contain `None` elements as well as be `None` itself
 
+### Tuple types
+
+A typestring wrapped in parentheses, e.g. `(int)`, is a tuple of that type. All the provisos about list types apply to tuple types as well.
+
 ### Set types
 
 A typestring wrapped in braces, e.g. `{int}`, is a set of that type. All the provisos about list types apply to set types as well.
