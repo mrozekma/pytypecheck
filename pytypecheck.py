@@ -208,8 +208,8 @@ def tc(f, preVerifyAnnotations = True, nextOverload = None):
 
 	@functools.wraps(f)
 	def wrap(*args, **kw):
-		binding = signature.bind_partial(*args, **kw)
 		try:
+			binding = signature.bind_partial(*args, **kw)
 			for name, param in signature.parameters.items():
 				typestring = param.annotation
 
